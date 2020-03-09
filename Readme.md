@@ -1,4 +1,4 @@
-# Project points to a plane
+# Useful functions for point cloud processing (implemented with pcl)
 
 ## How to use:
 
@@ -14,7 +14,8 @@ make
 ```
 cd ..
 # configure the script/run.sh file for editting the data path
-sh script/run.sh
+# run the function
+sh script/run_xxx.sh
 ```
 
 

@@ -19,8 +19,21 @@ ADD_DEFINITIONS(${PCL_DEFINITIONS})
 LIST(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
 message("PCL [OK]")
 
-SET(DEP_LIBS ${DEP_LIBS} ${PCL_LIBRARIES})
+#libLas
+FIND_PACKAGE(libLAS REQUIRED)
+IF(libLAS_FOUND) 
+MESSAGE("LibLAS [OK]") 
+INCLUDE_DIRECTORIES(${LIBLAS_INCLUDE_DIR})
+LINK_DIRECTORIES(${LIBLAS_LIBS})
+LINK_LIBRARIES("/usr/local/lib/liblas.so.2.4.0")
+ENDIF(libLAS_FOUND)
 
-add_executable(project2plane ${PROJECT_SOURCE_DIR}/src/main.cpp)
+SET(DEP_LIBS ${DEP_LIBS} ${PCL_LIBRARIES} ${LibLAS_LIBRARIES})
+
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+
+add_executable(project2plane ${PROJECT_SOURCE_DIR}/test/project2plane.cpp)
+add_executable(cloud2raster ${PROJECT_SOURCE_DIR}/test/cloud2raster.cpp)
 
 target_link_libraries(project2plane ${DEP_LIBS})
+target_link_libraries(cloud2raster ${DEP_LIBS})
