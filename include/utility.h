@@ -11,6 +11,7 @@
 #include <pcl/filters/project_inliers.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/registration/transformation_estimation_svd.h>
 
 #include <vector>
 #include <list>
@@ -120,7 +121,7 @@ class CloudUtility
                 cloud_out->points.push_back(cloud_in->points[i]);
             }
         }
-        std::cout<<"Get "<<cloud_out->points.size()<< " points"<<std::endl;
+        std::cout << "Get " << cloud_out->points.size() << " points" << std::endl;
         return 1;
     }
 
@@ -172,9 +173,62 @@ class CloudUtility
             distc2_sum += ((dist_list[i] - dist_mean) * (dist_list[i] - dist_mean));
         }
 
-        dist_std=std::sqrt(distc2_sum/dist_list.size());
+        dist_std = std::sqrt(distc2_sum / dist_list.size());
 
         return dist_std;
+    }
+
+    float get_mean_i(typename pcl::PointCloud<PointT>::Ptr &cloud_in)
+    {
+        float sum_intensity = 0;
+
+        for (int i = 0; i < cloud_in->points.size(); i++)
+        {
+            sum_intensity += cloud_in->points[i].intensity;
+        }
+        float mean_intensity = 1.0 * sum_intensity / cloud_in->points.size();
+        return mean_intensity;
+    }
+
+    float get_mean_dis(typename pcl::PointCloud<PointT>::Ptr &cloud_g, Eigen::Matrix4f &tran_s2g)
+    {
+        float sum_dis = 0;
+        Eigen::Matrix4f tran_g2s = tran_s2g.inverse();
+        typename pcl::PointCloud<PointT>::Ptr cloud_s(new pcl::PointCloud<PointT>());
+        pcl::transformPointCloud(*cloud_g, *cloud_s, tran_g2s);
+
+        for (int i = 0; i < cloud_s->points.size(); i++)
+        {
+            Eigen::Vector3f pt(cloud_s->points[i].x, cloud_s->points[i].y, cloud_s->points[i].z);
+
+            sum_dis += pt.norm();
+        }
+
+        float mean_dis = 1.0 * sum_dis / cloud_g->points.size();
+        return mean_dis;
+    }
+
+    float get_mean_ia(typename pcl::PointCloud<PointT>::Ptr &cloud_g, pcl::ModelCoefficients::Ptr &coeff, Eigen::Matrix4f &tran_s2g)
+    {
+        float sum_ia = 0;
+        Eigen::Matrix4f tran_g2s = tran_s2g.inverse();
+        typename pcl::PointCloud<PointT>::Ptr cloud_s(new pcl::PointCloud<PointT>());
+        pcl::transformPointCloud(*cloud_g, *cloud_s, tran_g2s);
+
+        Eigen::Vector3f normal_g(coeff->values[0], coeff->values[1], coeff->values[2]);
+        Eigen::Vector3f normal_s = tran_g2s.block<3, 3>(0, 0) * normal_g;
+
+        for (int i = 0; i < cloud_s->points.size(); i++)
+        {
+            Eigen::Vector3f pt(cloud_s->points[i].x, cloud_s->points[i].y, cloud_s->points[i].z);
+
+            float cos_ia = std::abs(pt.dot(normal_s)) / pt.norm() / normal_s.norm();
+
+            sum_ia += (std::acos(cos_ia) / M_PI * 180.0);
+        }
+
+        float mean_ia = 1.0 * sum_ia / cloud_g->points.size();
+        return mean_ia;
     }
 
   protected:

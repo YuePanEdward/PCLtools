@@ -300,6 +300,44 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
+    bool readTxtFile(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    {
+        std::ifstream in(fileName.c_str(), std::ios::in);
+        if (!in)
+        {
+            return 0;
+        }
+        //double x_ = 0, y_ = 0, z_ = 0;
+        //double x_ = 0, y_ = 0, z_ = 0, i_ = 0;
+        char comma;
+        double x_ = 0, y_ = 0, z_ = 0, i_ = 0;
+        int r_ = 0, g_ = 0, b_ = 0;
+        int i = 0;
+        while (!in.eof())
+        {
+            //in >> x_ >> y_ >> z_;
+            //in >> x_ >> y_ >> z_ >> i_;
+            in >> x_ >> comma >> y_ >> comma >> z_ >> comma >> i_ >> comma >> r_ >> comma >> g_ >> comma >> b_;
+            if (in.fail())
+            {
+                break;
+            }
+            PointT Pt;
+            Pt.x = x_;
+            Pt.y = y_;
+            Pt.z = z_;
+            Pt.intensity = i_;
+            //Pt.r = r_;
+            //Pt.g = g_;
+            //Pt.b = b_;
+            pointCloud->points.push_back(Pt);
+            ++i;
+        }
+        in.close();
+        std::cout << "Import finished ... ..." << std::endl;
+        return 1;
+    }
+
     bool readRasterFile(const std::string &raster_file, float x_base, float x_thre_dis, std::vector<bounds_t> &bounds)
     {
         //data format
@@ -336,7 +374,7 @@ class DataIo : public CloudUtility<PointT>
             bound.min_z = z_min;
             bound.max_z = z_max;
 
-            std::cout << y_min << "\t" << z_min << "\t" << y_max << "\t" << z_max << "\n";
+            //std::cout << y_min << "\t" << z_min << "\t" << y_max << "\t" << z_max << "\n";
 
             bounds.push_back(bound);
 
@@ -369,16 +407,16 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
-    bool outputRasterDistStd(const std::string &std_file, std::vector<float> &raster_std_list)
+    bool outputRasterProperty(const std::string filename, std::vector<float> &raster_property_list)
     {
         std::ofstream ofs;
-        ofs.open(std_file);
+        ofs.open(filename);
         if (ofs.is_open())
         {
-            for (int i = 0; i < raster_std_list.size(); ++i)
+            for (int i = 0; i < raster_property_list.size(); ++i)
             {
                 ofs << i + 1 << "  "
-                    << setiosflags(std::ios::fixed) << std::setprecision(6) << raster_std_list[i]
+                    << setiosflags(std::ios::fixed) << std::setprecision(6) << raster_property_list[i]
                     << std::endl;
             }
             ofs.close();
@@ -387,7 +425,35 @@ class DataIo : public CloudUtility<PointT>
         {
             return 0;
         }
-        std::cout << "Output rasters' std of the distance to reference plane done ... ..." << std::endl;
+        std::cout << "Output rasters' property done ... ..." << std::endl;
+    }
+
+    bool readTransMat(const std::string filename, Eigen::Matrix4f &Tran_mat)
+    {
+        ifstream in(filename, ios::in);
+        if (!in)
+        {
+            return 0;
+        }
+        double x1 = 0, x2 = 0, x3 = 0, x4 = 0;
+        int i = 0;
+        while (!in.eof())
+        {
+            in >> x1 >> x2 >> x3 >> x4;
+            if (in.fail())
+            {
+                break;
+            }
+            Tran_mat(i, 0) = x1;
+            Tran_mat(i, 1) = x2;
+            Tran_mat(i, 2) = x3;
+            Tran_mat(i, 3) = x4;
+            ++i;
+        }
+        in.close();
+        std::cout << "Load Rt done ......" << std::endl;
+
+        return 1;
     }
 };
 

@@ -17,16 +17,21 @@ int main(int argc, char **argv)
     std::string raster_file = argv[2];
     std::string plane_coeff_file = argv[3];
     std::string result_files_out_folder = argv[4];
-    std::string std_file = argv[5];
-    float x_base = atof(argv[6]);
-    float x_thre_dis = atof(argv[7]);
+    std::string georef_tran_file = argv[5];
+    std::string std_file = argv[6];
+    std::string dis_file = argv[7];
+    std::string ia_file = argv[8]; //incidence angle
+    std::string intensity_file = argv[9];
+    float x_base = atof(argv[10]);
+    float x_thre_dis = atof(argv[11]);
 
     pcl::PointCloud<Point_T>::Ptr cloud_in(new pcl::PointCloud<Point_T>);
     std::vector<pcl::PointCloud<Point_T>::Ptr> clouds_raster;
 
     // Import points
     DataIo<Point_T> io;
-    io.readLasFile(pointcloud_file_in, cloud_in);
+    //io.readLasFile(pointcloud_file_in, cloud_in);
+    io.readTxtFile(pointcloud_file_in, cloud_in);
 
     // Import raster coordinates
     std::vector<bounds_t> bounds;
@@ -44,19 +49,32 @@ int main(int argc, char **argv)
     pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients());
     io.readPlaneCoeff(plane_coeff_file, coeff);
 
-    std::vector<float> raster_dist_std;
-    raster_dist_std.resize(bounds.size());
+    std::vector<float> raster_dist_std(bounds.size(),0);
+    std::vector<float> raster_mean_intensity(bounds.size(),0);
+    std::vector<float> raster_mean_distance(bounds.size(),0);
+    std::vector<float> raster_mean_incidence_angle(bounds.size(),0);
+
+    Eigen::Matrix4f tran_s2g;
+    io.readTransMat(georef_tran_file, tran_s2g);
+
+    
     for (int i = 0; i < bounds.size(); i++)
     {
         std::vector<float> dist_list;
         pcl::PointCloud<Point_T>::Ptr cloud_proj(new pcl::PointCloud<Point_T>);
         cu.projectCloud2Plane(clouds_raster[i], coeff, cloud_proj, dist_list);
         raster_dist_std[i] = cu.get_std(dist_list);
+        raster_mean_intensity[i] = cu.get_mean_i(clouds_raster[i]);
+        raster_mean_distance[i] = cu.get_mean_dis(clouds_raster[i], tran_s2g);
+        raster_mean_incidence_angle[i] = cu.get_mean_ia(clouds_raster[i], coeff, tran_s2g);
     }
 
-    io.outputRasterDistStd(std_file, raster_dist_std);
+    io.outputRasterProperty(std_file, raster_dist_std);
+    io.outputRasterProperty(intensity_file, raster_mean_intensity);
+    io.outputRasterProperty(dis_file, raster_mean_distance);
+    io.outputRasterProperty(ia_file, raster_mean_incidence_angle);
 
-    io.batchWritePcdFileswithStd(result_files_out_folder, clouds_raster, raster_dist_std);
+    //io.batchWritePcdFileswithStd(result_files_out_folder, clouds_raster, raster_dist_std);
     //io.batchWritePcdFiles(result_files_out_folder, clouds_raster);
 
     return 1;
