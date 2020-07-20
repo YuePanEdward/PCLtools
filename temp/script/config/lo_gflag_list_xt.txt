@@ -1,0 +1,100 @@
+-parameter list (standard for Pandar XT lidar)
+---------------------------------------------------------------------------------------------------------------
+--vis_intensity_scale=256
+--vis_map_history_down_rate=50
+--vis_map_history_keep_frame_num=200
+-color_map: intensity = 0, elevation=1, semantic=2, frame-wise=3
+--vis_initial_color_type=0
+---------------------------------------------------------------------------------------------------------------
+--apply_dist_filter=true
+--min_dist_used=2.0
+--max_dist_used=120.0
+--min_dist_mapping=2.0
+--max_dist_mapping=120.0
+--map_downrate_output=4
+--approx_scanner_height=2.2
+--underground_height_thre=-4.0
+--vertical_ang_correction_deg=0.0
+--cloud_down_res=0.0
+--unit_dist=10.0
+--cloud_pca_neigh_r=0.8
+--cloud_pca_neigh_k=25
+--cloud_pca_neigh_k_min=7
+--gf_grid_size=2.0
+--gf_in_grid_h_thre=0.2
+--gf_neigh_grid_h_thre=1.0
+--gf_max_h=0.5
+--gf_normal_estimation_radius=2.0
+--gf_ground_down_rate=8
+--gf_nonground_down_rate=5
+--gf_grid_min_pt_num=6
+--gf_reliable_neighbor_grid_thre=2
+--gf_down_down_rate=2
+--intensity_thre_nonground=125.0
+--unground_down_fixed_num=20000
+--ground_down_fixed_num=700
+--pillar_down_fixed_num=500
+--facade_down_fixed_num=1200
+--beam_down_fixed_num=200
+--roof_down_fixed_num=100
+--linearity_thre=0.63
+--planarity_thre=0.63
+--linearity_thre_down=0.73
+--planarity_thre_down=0.73
+--beam_direction_ang=10
+--pillar_direction_ang=70
+--facade_normal_ang=20
+--roof_normal_ang=80
+--curvature_thre=0.1
+--corr_dis_thre_init=1.2
+--corr_dis_thre_min=0.4
+--dis_thre_update_rate=1.1
+--z_xy_balance_ratio=1.0
+--pt2pt_res_window=0.05
+--pt2pl_res_window=0.05
+--pt2li_res_window=0.05
+--converge_tran=0.0005
+--converge_rot_d=0.002
+--reg_max_iter_num_s2s=25
+--reg_max_iter_num_s2m=25
+--local_map_radius=80
+--append_frame_radius=80
+--local_map_max_pt_num=25000
+--dynamic_removal_radius=25.0
+--dynamic_dist_thre_min=0.3
+--s2m_frequency=1
+---------------------------------------------------------------------------------------------------------------
+--scan_to_scan_module_on=false
+--adaptive_parameters_on=false
+--vertical_ang_calib_on=true
+--apply_scanner_filter=true
+--reg_intersection_filter_on=false
+--zupt_on_or_not=false
+--fixed_num_downsampling_on=true
+--apply_map_based_dynamic_removal=true
+--semantic_assist_on=false
+--detect_curb_or_not=false
+-motion_compensation_method: (0: disabled, 1: uniform motion model (from point-wise timestamp), 2: from azimuth, 3: imu-assisted)
+--motion_compensation_method=1
+-dist_inverse_sampling_method: (0: disabled, 1: linear weight, 2: quadratic weight)
+--dist_inverse_sampling_method=2
+-ground_normal_method: (0: directly use (0,0,1), 1: estimate normal in fixed radius neighborhood, 2: estimate normal in k nearest neighborhood , 3: use ransac to estimate plane coeffs in a grid)
+--ground_normal_method=3
+-vertex_extraction_method: "extraction method of vertex points (0: disabled, 1: maximum local curvature within stable points, 2: intersection points of pillar and beams)
+--vertex_extraction_method=2
+-weighting strategy for correspondences (1: on, 0: off, order: x,y,z balanced weight, residual weight, distance weight, intensity weight)
+--corr_weight_strategy=1111
+-used_feature_type: (1: on, 0: off, order: ground, pillar,facade, beam, roof, vetrex)
+--used_feature_type=111110
+-initial_guess_mode: (0: no initial guess, 1: uniform motion(translation only), 2: uniform motion(translation+rotation), 3:imu based)
+--initial_guess_mode=2
+---------------------------------------------------------------------------------------------------------------
+--loop_closure_detection_on=true
+--cooling_submap_num=2
+--min_iou_thre=0.4
+--submap_accu_tran=30.0
+--submap_accu_rot=90.0
+--submap_accu_frame=10
+--neighbor_search_dist=50.0
+-pose_graph_optimization_method: select from g2o, ceres and gtsam
+--pose_graph_optimization_method=ceres

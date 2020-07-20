@@ -1,0 +1,80 @@
+-parameter list (standard for kitti dataset scan to scan) 
+-fast verison for urban scenarios
+---------------------------------------------------------------------------------------------------------------
+--vis_intensity_scale=256
+--vis_map_history_down_rate=1000
+--vis_map_history_keep_frame_num=150
+--vis_initial_color_type=1
+---------------------------------------------------------------------------------------------------------------
+--vertical_ang_correction_deg=0.195
+--cloud_down_res=0.0
+--unit_dist=15.0
+--cloud_pca_neigh_r=0.5
+--cloud_pca_neigh_k=25
+--cloud_pca_neigh_k_min=8
+--gf_grid_size=2.5
+--gf_in_grid_h_thre=0.25
+--gf_neigh_grid_h_thre=1.5
+--gf_max_h=2.0
+--gf_normal_estimation_radius=3.0
+--gf_ground_down_rate=10
+--gf_nonground_down_rate=4
+--gf_grid_min_pt_num=6
+--gf_reliable_neighbor_grid_thre=3
+--gf_down_down_rate=3
+--unground_down_fixed_num=10000
+--ground_down_fixed_num=400
+--pillar_down_fixed_num=100
+--facade_down_fixed_num=600
+--beam_down_fixed_num=100
+--linearity_thre=0.65
+--planarity_thre=0.65
+--linearity_thre_down=0.73
+--planarity_thre_down=0.73
+--curvature_thre=0.08
+--beam_direction_ang=0
+--pillar_direction_ang=75
+--facade_normal_ang=20
+--roof_normal_ang=90
+--corr_dis_thre_init=1.4
+--corr_dis_thre_min=0.5
+--dis_thre_update_rate=1.2
+--z_xy_balance_ratio=1.0
+--pt2pt_res_window=0.05
+--pt2pl_res_window=0.05
+--pt2li_res_window=0.05
+--converge_tran=0.0005
+--converge_rot_d=0.002
+--reg_max_iter_num_s2s=5
+--reg_max_iter_num_s2m=5
+--local_map_radius=70
+--append_frame_radius=80
+--local_map_max_pt_num=10000
+--dynamic_removal_radius=25.0
+--dynmaic_removal_cor_dist_thre=0.35
+--s2m_frequency=1
+---------------------------------------------------------------------------------------------------------------
+--scan_to_scan_module_on=false
+--adaptive_parameters_on=false
+--vertical_ang_calib_on=true
+--apply_scanner_filter=true
+--reg_intersection_filter_on=true
+--zupt_on_or_not=false
+--fixed_num_downsampling_on=true
+--apply_map_based_dynamic_removal=false
+--semantic_assist_on=false
+--detect_curb_or_not=false
+-motion_compensation_method: (0: disabled, 1: uniform motion model, 2: velocity & acceration by imu)
+--motion_compensation_method=0
+-dist_inverse_sampling_method: (0: disabled, 1: linear weight, 2: quadratic weight)
+--dist_inverse_sampling_method=2
+-ground_normal_method: (0: directly use (0,0,1), 1: estimate normal in fixed radius neighborhood, 2: estimate normal in k nearest neighborhood , 3: use ransac to estimate plane coeffs in a grid)
+--ground_normal_method=3
+-vertex_extraction_method: "extraction method of vertex points (0: disabled, 1: maximum local curvature within stable points, 2: intersection points of pillar and beams)
+--vertex_extraction_method=0
+-weighting strategy for correspondences (1: on, 0: off, order: x,y,z balanced weight, residual weight, distance weight, intensity weight)
+--corr_weight_strategy=1111
+-used_feature_type: (1: on, 0: off, order: ground, pillar,facade, beam, roof, vetrex)
+--used_feature_type=111000
+-initial_guess_mode: (0: no initial guess, 1: uniform motion(translation only), 2: uniform motion(translation+rotation), 3:imu based)
+--initial_guess_mode=2
