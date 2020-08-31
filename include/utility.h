@@ -160,7 +160,7 @@ class CloudUtility
 
     bool cutHull(const typename pcl::PointCloud<PointT>::Ptr cloud_in,
                  const typename pcl::PointCloud<PointT>::Ptr polygon_vertices,
-                 typename pcl::PointCloud<PointT>::Ptr pointcloud_cut)
+                 typename pcl::PointCloud<PointT>::Ptr pointcloud_cut, bool keep_silent = false)
     {
         std::vector<pcl::Vertices> polygons;
 
@@ -177,9 +177,12 @@ class CloudUtility
         bp_filter.setHullCloud(polygon_vertices); //the point cloud storing the coordinates of the bounding polygon
         bp_filter.setHullIndices(polygons);       //the indice of the vertex of the bounding polygon corresponding to the point cloud
         bp_filter.filter(*pointcloud_cut);        //get the cutted point cloud
-        std::cout << "[INFO] [CutHull] Point number before bounding polygon cutting: " << cloud_in->size() << std::endl;
-        std::cout << "[INFO] [CutHull] Point number after bounding polygo cutting: " << pointcloud_cut->size() << std::endl;
 
+        if (!keep_silent)
+        {
+            std::cout << "[INFO] [CutHull] Point number before bounding polygon cutting: " << cloud_in->size() << std::endl;
+            std::cout << "[INFO] [CutHull] Point number after bounding polygo cutting: " << pointcloud_cut->size() << std::endl;
+        }
         return true;
     }
 

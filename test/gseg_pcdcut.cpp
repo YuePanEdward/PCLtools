@@ -1,3 +1,4 @@
+// GSEG_PCDCUT
 // Function: Cut a point cloud defined by a projected bounding polygon
 // By Yue Pan @ ETH D-BAUG GSEG (yuepan@student.ethz.ch)
 // 3rd Dependent Lib: PCL
@@ -26,8 +27,13 @@ int main(int argc, char **argv)
     {
         std::cout << "[ERROR] [MAIN] Wrong input sequence" << std::endl
                   << "The correct input sequence should be:" << std::endl
-                  << "gseg_pcdcut [input point cloud pcd file] [bounding polygon file] [output point cloud pcd file] [(optional)reference plane definition file]" << std::endl
-                  << "Example: gseg_pcdcut  " << std::endl; //TODO: complete
+                  << "gseg_pcdcut [input point cloud pcd file] [bounding polygon file] [output point cloud pcd file] [(optional)reference plane definition file]" << std::endl;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+        std::cout << "Example: gseg_pcdcut [basefolder]\\test_pointcloud_S1.pcd [basefolder]\\test_polygon.txt [basefolder]\\test_plane_coefficients [basefolder]\\test_pointcloud_cut_S1.pcd" << std::endl;
+#else
+        std::cout << "Example: gseg_pcdcut [basefolder]/test_pointcloud_S1.pcd [basefolder]/test_polygon.txt [basefolder]/test_plane_coefficients [basefolder]/test_pointcloud_cut_S1.pcd" << std::endl;
+#endif
+
         return 0;
     }
     else

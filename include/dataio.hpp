@@ -5,11 +5,14 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 
+#if LIBLAS_ON
 //liblas
 #include <liblas/liblas.hpp>
 #include <liblas/version.hpp>
 #include <liblas/point.hpp>
+#endif
 
+//boost
 #include <boost/filesystem.hpp>
 #include <boost/function.hpp>
 
@@ -26,48 +29,62 @@ template <typename PointT>
 class DataIo : public CloudUtility<PointT>
 {
   public:
-    bool readPcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    bool readPcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud, bool keep_silent = false)
     {
         if (pcl::io::loadPCDFile<PointT>(fileName, *pointCloud) == -1)
         {
             PCL_ERROR("Couldn't read file\n");
             return false;
         }
-        std::cout << "[INFO] [DATAIO] Input a pcd file done" << std::endl;
+        if (!keep_silent)
+            std::cout << "[INFO] [DATAIO] Input a pcd file from [" << fileName << "] done" << std::endl;
         return true;
     }
 
-    bool writePcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    bool writePcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud, bool keep_silent = false)
     {
         if (pcl::io::savePCDFileBinary(fileName, *pointCloud) == -1)
         {
             PCL_ERROR("Couldn't write file\n");
             return false;
         }
-        std::cout << "[INFO] [DATAIO] Output a pcd file done" << std::endl;
+        if (!keep_silent)
+            std::cout << "[INFO] [DATAIO] Output a pcd file to [" << fileName << "] done" << std::endl;
         return true;
     }
 
-    bool batchWritePcdPointClouds(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds)
+    bool batchWritePcdPointClouds(const std::string &folderName,
+                                  std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds)
     {
         if (!boost::filesystem::exists(folderName))
         {
             boost::filesystem::create_directory(folderName);
         }
+        int non_empyt_pointcloud_count = 0;
 
         for (int i = 0; i < pointClouds.size(); i++)
         {
             ostringstream oss;
             oss.setf(ios::right);
             oss.fill('0');
-            oss.width(3);
+            oss.width(4);
             oss << i + 1;
 
-            std::string filename = folderName + "/" + oss.str() + ".pcd";
-            writePcdPointCloud(filename, pointClouds[i]);
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+            static const std::string slash = "\\";
+#else
+            static const std::string slash = "/";
+#endif
+            std::string filename = folderName + slash + oss.str() + ".pcd";
+
+            if (pointClouds[i]->points.size() > 0)
+            {
+                writePcdPointCloud(filename, pointClouds[i], true);
+                non_empyt_pointcloud_count++;
+            }
         }
 
-        std::cout << "[INFO] [DATAIO] Batch output done (" << pointClouds.size() << " files)" << std::endl;
+        std::cout << "[INFO] [DATAIO] Batch output [" << non_empyt_pointcloud_count << "] pcd files to the folder [" << folderName << "] done" << std::endl;
 
         return 1;
     }
@@ -88,7 +105,12 @@ class DataIo : public CloudUtility<PointT>
             oss.width(3);
             oss << i + 1;
 
-            std::string filename = folderName + "/" + oss.str() + ".pcd";
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+            static const std::string slash = "\\";
+#else
+            static const std::string slash = "/";
+#endif
+            std::string filename = folderName + slash + oss.str() + ".pcd";
 
             for (int j = 0; j < pointClouds[i]->points.size(); j++)
             {
@@ -103,6 +125,7 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
+#if LIBLAS_ON
     bool batchWriteLasPointCloudwithStd(const std::string &folderName,
                                         std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds, std::vector<float> &raster_dist_std)
     {
@@ -118,7 +141,12 @@ class DataIo : public CloudUtility<PointT>
             oss.fill('0');
             oss.width(3);
             oss << i + 1;
-            std::string filename = folderName + "/" + oss.str() + ".las";
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+            static const std::string slash = "\\";
+#else
+            static const std::string slash = "/";
+#endif
+            std::string filename = folderName + slash + oss.str() + ".las";
 
             bounds_t bound;
             this->getCloudBound(*pointClouds[i], bound);
@@ -302,7 +330,7 @@ class DataIo : public CloudUtility<PointT>
         }
         return 1;
     }
-
+#endif
     bool readTxtPointCloud(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud,
                            int col_count = 3)
     {
@@ -365,6 +393,7 @@ class DataIo : public CloudUtility<PointT>
         std::ifstream in(raster_file.c_str(), std::ios::in);
         if (!in)
         {
+            std::cout << "[ERROR] [DATAIO] wrong input of raster file" << std::endl;
             return 0;
         }
         int id;
@@ -401,6 +430,64 @@ class DataIo : public CloudUtility<PointT>
         in.close();
 
         std::cout << "Import finished ... ... " << i << " subdivisions." << std::endl;
+
+        return 1;
+    }
+
+    bool readGridFile(const std::string &grid_file, std::vector<typename pcl::PointCloud<PointT>::Ptr> &grids_vertice)
+    {
+        //data format (example)
+        //ID	x_bl	y_bl	z_bl	x_tl	y_tl	z_tl	x_tr	y_tr	z_tr	x_br	y_br	z_br
+        //1	  1.0000	1.5609	0.5399	1.0000	1.5609	1.5399	1.0000	2.5609	1.5399	1.0000	2.5609	0.5399
+        //2   ... ...
+        //... ... ...
+
+        std::ifstream in(grid_file.c_str(), std::ios::in);
+        if (!in)
+        {
+            std::cout << "[ERROR] [DATAIO] wrong input of grid file" << std::endl;
+            return false;
+        }
+        int id;
+        float x_bl, y_bl, z_bl, x_tl, y_tl, z_tl, x_tr, y_tr, z_tr, x_br, y_br, z_br;
+
+        int i = 0;
+        std::string head;
+        std::getline(in, head); //get the format description head line (ID x_bl y_bl ... )
+
+        while (!in.eof())
+        {
+            in >> id >> x_bl >> y_bl >> z_bl >> x_tl >> y_tl >> z_tl >> x_tr >> y_tr >> z_tr >> x_br >> y_br >> z_br;
+            if (in.fail())
+                break;
+
+            typename pcl::PointCloud<PointT>::Ptr grid_vertice(new pcl::PointCloud<PointT>);
+            PointT v_bl, v_tl, v_tr, v_br;
+            v_bl.x = x_bl;
+            v_bl.y = y_bl;
+            v_bl.z = z_bl;
+            v_tl.x = x_tl;
+            v_tl.y = y_tl;
+            v_tl.z = z_tl;
+            v_tr.x = x_tr;
+            v_tr.y = y_tr;
+            v_tr.z = z_tr;
+            v_br.x = x_br;
+            v_br.y = y_br;
+            v_br.z = z_br;
+
+            grid_vertice->points.push_back(v_bl);
+            grid_vertice->points.push_back(v_tl);
+            grid_vertice->points.push_back(v_tr);
+            grid_vertice->points.push_back(v_br);
+
+            grids_vertice.push_back(grid_vertice);
+
+            ++i;
+        }
+        in.close();
+
+        std::cout << "[INFO] [DATAIO] Import the griddef file done, [" << i << "] grids are defined" << std::endl;
 
         return 1;
     }
