@@ -26,27 +26,29 @@ template <typename PointT>
 class DataIo : public CloudUtility<PointT>
 {
   public:
-    bool readPcdFile(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    bool readPcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
     {
         if (pcl::io::loadPCDFile<PointT>(fileName, *pointCloud) == -1)
         {
             PCL_ERROR("Couldn't read file\n");
             return false;
         }
+        std::cout << "[INFO] [DATAIO] Input a pcd file done" << std::endl;
         return true;
     }
 
-    bool writePcdFile(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    bool writePcdPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud)
     {
         if (pcl::io::savePCDFileBinary(fileName, *pointCloud) == -1)
         {
             PCL_ERROR("Couldn't write file\n");
             return false;
         }
+        std::cout << "[INFO] [DATAIO] Output a pcd file done" << std::endl;
         return true;
     }
 
-    bool batchWritePcdFiles(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds)
+    bool batchWritePcdPointClouds(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds)
     {
         if (!boost::filesystem::exists(folderName))
         {
@@ -62,16 +64,16 @@ class DataIo : public CloudUtility<PointT>
             oss << i + 1;
 
             std::string filename = folderName + "/" + oss.str() + ".pcd";
-            writePcdFile(filename, pointClouds[i]);
+            writePcdPointCloud(filename, pointClouds[i]);
         }
 
-        std::cout << "Batch output done (" << pointClouds.size() << " files)" << std::endl;
+        std::cout << "[INFO] [DATAIO] Batch output done (" << pointClouds.size() << " files)" << std::endl;
 
         return 1;
     }
 
-    bool batchWritePcdFileswithStd(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds,
-                                   std::vector<float> &raster_dist_std)
+    bool batchWritePcdPointCloudswithStd(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds,
+                                         std::vector<float> &raster_dist_std)
     {
         if (!boost::filesystem::exists(folderName))
         {
@@ -93,15 +95,16 @@ class DataIo : public CloudUtility<PointT>
                 pointClouds[i]->points[j].intensity = raster_dist_std[i];
             }
 
-            writePcdFile(filename, pointClouds[i]);
+            writePcdPointCloud(filename, pointClouds[i]);
         }
 
-        std::cout << "Batch output done (" << pointClouds.size() << " files)" << std::endl;
+        std::cout << "[INFO] [DATAIO] Batch output done (" << pointClouds.size() << " files)" << std::endl;
 
         return 1;
     }
 
-    bool batchWriteLasFileswithStd(const std::string &folderName, std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds, std::vector<float> &raster_dist_std)
+    bool batchWriteLasPointCloudwithStd(const std::string &folderName,
+                                        std::vector<typename pcl::PointCloud<PointT>::Ptr> &pointClouds, std::vector<float> &raster_dist_std)
     {
         if (!boost::filesystem::exists(folderName))
         {
@@ -188,7 +191,7 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
-    bool readLasFile(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud) //Without translation
+    bool readLasPointCloud(const std::string &fileName, typename pcl::PointCloud<PointT>::Ptr &pointCloud) //Without translation
     {
         //cout << "A global translation or gravitization should be done to keep the precision of point cloud when adopting pcl to do las file point cloud processing" << endl;
 
@@ -252,7 +255,7 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
-    bool writeLasFile(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud) //Without translation
+    bool writeLasPointCloud(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud) //Without translation
     {
 
         bounds_t bound;
@@ -300,24 +303,34 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
-    bool readTxtFile(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud)
+    bool readTxtPointCloud(const std::string &fileName, const typename pcl::PointCloud<PointT>::Ptr &pointCloud,
+                           int col_count = 3)
     {
+        //data format: (optional)
+        //x y z (i) (r) (g) (b)
+        //split with space " "
         std::ifstream in(fileName.c_str(), std::ios::in);
         if (!in)
         {
             return 0;
         }
-        //double x_ = 0, y_ = 0, z_ = 0;
-        //double x_ = 0, y_ = 0, z_ = 0, i_ = 0;
         char comma;
         double x_ = 0, y_ = 0, z_ = 0, i_ = 0;
         int r_ = 0, g_ = 0, b_ = 0;
         int i = 0;
         while (!in.eof())
         {
-            //in >> x_ >> y_ >> z_;
-            //in >> x_ >> y_ >> z_ >> i_;
-            in >> x_ >> comma >> y_ >> comma >> z_ >> comma >> i_ >> comma >> r_ >> comma >> g_ >> comma >> b_;
+            if (col_count == 3)
+                in >> x_ >> y_ >> z_;
+            else if (col_count == 4)
+                in >> x_ >> y_ >> z_ >> i_;
+            else if (col_count == 7)
+                in >> x_ >> y_ >> z_ >> i_ >> r_ >> g_ >> b_;
+            else
+            {
+                std::cout << "[ERROR] [DATAIO] the colum number does not match the candidate settings" << std::endl;
+                break;
+            }
             if (in.fail())
             {
                 break;
@@ -326,15 +339,20 @@ class DataIo : public CloudUtility<PointT>
             Pt.x = x_;
             Pt.y = y_;
             Pt.z = z_;
-            Pt.intensity = i_;
-            //Pt.r = r_;
-            //Pt.g = g_;
-            //Pt.b = b_;
+            //TODO
+            // if (col_count > 3)
+            //     Pt.intensity = i_;
+            // if (col_count > 4)
+            // {
+            //     Pt.r = r_;
+            //     Pt.g = g_;
+            //     Pt.b = b_;
+            // }
             pointCloud->points.push_back(Pt);
             ++i;
         }
         in.close();
-        std::cout << "Import finished ... ..." << std::endl;
+        std::cout << "[INFO] [DATAIO] Import file [" << fileName << "] done" << std::endl;
         return 1;
     }
 
@@ -387,24 +405,25 @@ class DataIo : public CloudUtility<PointT>
         return 1;
     }
 
-    bool readPlaneCoeff(const std::string &plane_file, pcl::ModelCoefficients::Ptr &coefficients)
+    bool readPlaneCoeff(const std::string &plane_file,
+                        pcl::ModelCoefficients::Ptr coefficients)
     {
         coefficients->values.resize(4);
 
         std::ifstream in_plane(plane_file, std::ios::in);
         if (!in_plane)
         {
-            return 0;
+            std::cout << "[ERROR] [DATAIO] Fail to read the plane coefficients file" << std::endl;
+            return false;
         }
         in_plane >> coefficients->values[0] >> coefficients->values[1] >> coefficients->values[2] >> coefficients->values[3];
 
         in_plane.close();
-        std::cout << "Import plane coefficients done ... ..." << std::endl;
-        std::cout << "plane coefficients: " << std::endl
-                  << "a:" << coefficients->values[0] << " ,b:" << coefficients->values[1]
-                  << " ,c:" << coefficients->values[2] << " ,d:" << coefficients->values[3] << std::endl;
+        std::cout << "[INFO] [DATAIO] Import plane coefficients done:" << std::endl;
+        std::cout << "Plane function: " << coefficients->values[0] << " x + " << coefficients->values[1]
+                  << " y + " << coefficients->values[2] << " z + " << coefficients->values[3] << " = 0" << std::endl;
 
-        return 1;
+        return true;
     }
 
     bool outputRasterProperty(const std::string filename, std::vector<float> &raster_property_list)

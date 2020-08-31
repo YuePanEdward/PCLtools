@@ -8,10 +8,13 @@
 #include <pcl/common/geometry.h>
 #include <pcl/point_representation.h>
 #include <pcl/ModelCoefficients.h>
+#include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/filters/project_inliers.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/extract_indices.h>
-#include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/filters/crop_hull.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/surface/concave_hull.h>
 
 #include <vector>
 #include <list>
@@ -109,7 +112,8 @@ class CloudUtility
         cp.z = 0.5 * (bound.min_z + bound.max_z);
     }
 
-    bool BbxFilter(const typename pcl::PointCloud<PointT>::Ptr &cloud_in, typename pcl::PointCloud<PointT>::Ptr &cloud_out, bounds_t &bbx)
+    bool bbxFilter(const typename pcl::PointCloud<PointT>::Ptr cloud_in,
+                   typename pcl::PointCloud<PointT>::Ptr cloud_out, bounds_t &bbx)
     {
         for (int i = 0; i < cloud_in->points.size(); i++)
         {
@@ -122,24 +126,65 @@ class CloudUtility
             }
         }
         std::cout << "Get " << cloud_out->points.size() << " points" << std::endl;
-        return 1;
+        return true;
     }
 
-    //SOR (Statisics Outliers Remover);
-    bool SORFilter(const typename pcl::PointCloud<PointT>::Ptr &cloud_in, typename pcl::PointCloud<PointT>::Ptr &cloud_out, int MeanK, double std)
+    bool fitPlane(const typename pcl::PointCloud<PointT>::Ptr cloud_in, pcl::ModelCoefficients::Ptr plane_coeff,
+                  float dist_thre, int max_iter_ransac = 200)
     {
-        // Create the filtering object
-        pcl::StatisticalOutlierRemoval<PointT> sor;
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 
-        sor.setInputCloud(cloud_in);
-        sor.setMeanK(MeanK);         //50
-        sor.setStddevMulThresh(std); //2.0
-        sor.filter(*cloud_out);
+        typename pcl::SACSegmentation<PointT> seg; // Create the segmentation object
 
-        return 1;
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setMaxIterations(max_iter_ransac);
+        seg.setDistanceThreshold(dist_thre);
+
+        seg.setInputCloud(cloud_in);
+        seg.segment(*inliers, *plane_coeff);
+
+        if (inliers->indices.size() != cloud_in->points.size())
+        {
+            std::cout << "[ERROR] [FITPLANE] The distance from a point to the best fit plane is larger than the threshold [" << dist_thre * 1000.0 << "] mm." << std::endl;
+            return false;
+        }
+        else
+        {
+            std::cout << "[INFO] [FITPLANE] The plane is successfully fitted" << std::endl;
+            std::cout << "Plane function: " << plane_coeff->values[0] << " x + " << plane_coeff->values[1]
+                      << " y + " << plane_coeff->values[2] << " z + " << plane_coeff->values[3] << " = 0" << std::endl;
+        }
+        return true;
     }
 
-    bool projectCloud2Plane(typename pcl::PointCloud<PointT>::Ptr &cloud_in, pcl::ModelCoefficients::Ptr &coefficients, typename pcl::PointCloud<PointT>::Ptr &cloud_proj, std::vector<float> &dist_list)
+    bool cutHull(const typename pcl::PointCloud<PointT>::Ptr cloud_in,
+                 const typename pcl::PointCloud<PointT>::Ptr polygon_vertices,
+                 typename pcl::PointCloud<PointT>::Ptr pointcloud_cut)
+    {
+        std::vector<pcl::Vertices> polygons;
+
+        int vertex_count = polygon_vertices->size();
+        pcl::Vertices polygon;
+        polygon.vertices.resize(vertex_count); //set the vertex number of the bounding polygon
+        for (int i = 0; i < vertex_count; i++) //set the indice of polygon vertices (assuming the input is already in order)
+            polygon.vertices[i] = i;
+        polygons.push_back(polygon); //just one polygon
+
+        pcl::CropHull<PointT> bp_filter; //bounding polygon filter
+        bp_filter.setDim(2);
+        bp_filter.setInputCloud(cloud_in);        //the point cloud waiting for cut
+        bp_filter.setHullCloud(polygon_vertices); //the point cloud storing the coordinates of the bounding polygon
+        bp_filter.setHullIndices(polygons);       //the indice of the vertex of the bounding polygon corresponding to the point cloud
+        bp_filter.filter(*pointcloud_cut);        //get the cutted point cloud
+        std::cout << "[INFO] [CutHull] Point number before bounding polygon cutting: " << cloud_in->size() << std::endl;
+        std::cout << "[INFO] [CutHull] Point number after bounding polygo cutting: " << pointcloud_cut->size() << std::endl;
+
+        return true;
+    }
+
+    bool projectCloud2Plane(typename pcl::PointCloud<PointT>::Ptr cloud_in, pcl::ModelCoefficients::Ptr coefficients,
+                            typename pcl::PointCloud<PointT>::Ptr cloud_proj, std::vector<float> &dist_list)
     {
         // Create the projection object
         typename pcl::ProjectInliers<PointT> proj;
@@ -153,11 +198,12 @@ class CloudUtility
         {
             dist_list[i] = pcl::geometry::distance(cloud_in->points[i], cloud_proj->points[i]);
         }
+        std::cout << "[INFO] [Proj] Points projected to the reference plane done" << std::endl;
 
-        return 1;
+        return true;
     }
 
-    float get_std(std::vector<float> &dist_list)
+    float getStdDist(std::vector<float> &dist_list)
     {
         float dist_sum = 0;
         float distc2_sum = 0;
@@ -178,7 +224,7 @@ class CloudUtility
         return dist_std;
     }
 
-    float get_mean_i(typename pcl::PointCloud<PointT>::Ptr &cloud_in)
+    float getMeanIntensity(typename pcl::PointCloud<PointT>::Ptr cloud_in)
     {
         float sum_intensity = 0;
 
@@ -190,7 +236,7 @@ class CloudUtility
         return mean_intensity;
     }
 
-    float get_mean_dis(typename pcl::PointCloud<PointT>::Ptr &cloud_g, Eigen::Matrix4f &tran_s2g)
+    float getMeanDist(typename pcl::PointCloud<PointT>::Ptr cloud_g, Eigen::Matrix4f &tran_s2g)
     {
         float sum_dis = 0;
         Eigen::Matrix4f tran_g2s = tran_s2g.inverse();
@@ -208,7 +254,7 @@ class CloudUtility
         return mean_dis;
     }
 
-    float get_mean_ia(typename pcl::PointCloud<PointT>::Ptr &cloud_g, pcl::ModelCoefficients::Ptr &coeff, Eigen::Matrix4f &tran_s2g)
+    float getMeanIncidenceAngle(typename pcl::PointCloud<PointT>::Ptr cloud_g, pcl::ModelCoefficients::Ptr &coeff, Eigen::Matrix4f &tran_s2g)
     {
         float sum_ia = 0;
         Eigen::Matrix4f tran_g2s = tran_s2g.inverse();
@@ -229,6 +275,48 @@ class CloudUtility
 
         float mean_ia = 1.0 * sum_ia / cloud_g->points.size();
         return mean_ia;
+    }
+
+    bool fitHull(typename pcl::PointCloud<PointT>::Ptr cloud_in,
+                 typename pcl::PointCloud<PointT>::Ptr polygon_vertices,
+                 std::vector<pcl::Vertices> &polygons,
+                 bool convex_or_not = true, float alpha_shape_value = 0.1)
+    {
+        // backup
+        // computing the convex (or concave hull) from the point cloud
+
+        if (convex_or_not)
+        {
+            pcl::ConvexHull<PointT> convex_hull;
+            convex_hull.setInputCloud(cloud_in);
+            convex_hull.setDimension(2);
+            convex_hull.reconstruct(*polygon_vertices, polygons);
+        }
+        else
+        {
+            pcl::ConcaveHull<PointT> concave_hull;
+            concave_hull.setInputCloud(cloud_in);
+            concave_hull.setDimension(2);
+            concave_hull.setAlpha(alpha_shape_value);
+            concave_hull.reconstruct(*polygon_vertices, polygons);
+        }
+
+        return true;
+    }
+
+    //SOR (Statisics Outliers Remover);
+    bool SORFilter(const typename pcl::PointCloud<PointT>::Ptr &cloud_in,
+                   typename pcl::PointCloud<PointT>::Ptr &cloud_out, int MeanK, double std)
+    {
+        // Create the filtering object
+        pcl::StatisticalOutlierRemoval<PointT> sor;
+
+        sor.setInputCloud(cloud_in);
+        sor.setMeanK(MeanK);         //50
+        sor.setStddevMulThresh(std); //2.0
+        sor.filter(*cloud_out);
+
+        return true;
     }
 
   protected:

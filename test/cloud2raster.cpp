@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 
     pcl::PointCloud<Point_T>::Ptr cloud_in(new pcl::PointCloud<Point_T>);
     std::vector<pcl::PointCloud<Point_T>::Ptr> clouds_raster;
-
+ 
     // Import points
     DataIo<Point_T> io;
     //io.readLasFile(pointcloud_file_in, cloud_in);
